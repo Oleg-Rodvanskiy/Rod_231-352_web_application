@@ -1,35 +1,5 @@
 import pytest
-from app import app  # Импортируем функцию для создания приложения
 
-@pytest.fixture
-def client():
-    app = app()
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
-
-@pytest.fixture
-def mock_posts(mocker):
-    return [
-        {
-            'id': 1,
-            'title': 'Первый пост',
-            'text': 'Текст первого поста.',
-            'author': 'Автор 1',
-            'date': '2023-01-01',
-            'image_id': 'image1.jpg',
-            'comments': [{'author': 'Комментатор 1', 'text': 'Комментарий 1'}]
-        },
-        {
-            'id': 2,
-            'title': 'Второй пост',
-            'text': 'Текст второго поста.',
-            'author': 'Автор 2',
-            'date': '2023-01-02',
-            'image_id': 'image2.jpg',
-            'comments': []
-        }
-    ]
 
 # Тест на правильный URL и рендеринг главной страницы
 def test_index_page(client):

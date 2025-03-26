@@ -36,3 +36,26 @@ def posts_list():
             'comments': []
         }
     ]
+
+@pytest.fixture
+def mock_posts(mocker):
+    return [
+        {
+            'id': 1,
+            'title': 'Первый пост',
+            'text': 'Текст первого поста.',
+            'author': 'Автор 1',
+            'date': '2023-01-01',
+            'image_id': 'image1.jpg',
+            'comments': [{'author': 'Комментатор 1', 'text': 'Комментарий 1'}]
+        },
+        {
+            'id': 2,
+            'title': 'Второй пост',
+            'text': 'Текст второго поста.',
+            'author': 'Автор 2',
+            'date': '2023-01-02',
+            'image_id': 'image2.jpg',
+            'comments': []
+        }
+    ]
