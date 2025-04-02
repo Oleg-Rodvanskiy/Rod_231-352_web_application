@@ -1,32 +1,39 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>{{ post.title }}</h1>
-    <p><strong>Автор:</strong> {{ post.author }}</p>
-    <p><strong>Дата публикации:</strong> {{ post.date.strftime('%d.%m.%Y') }}</p>
+    <h1>Список Постов</h1>
 
-    {% if post.image_id %}
-        <img src="{{ url_for('static', filename='images/' + post.image_id) }}" alt="{{ post.title }}" class="img-fluid mb-3">
-    {% endif %}
+    {% for post in posts %}
+        <div class="post">
+            <h2>{{ post.title }}</h2>
+            <p><strong>Автор:</strong> {{ post.author }}</p>
+            <p><strong>Дата публикации:</strong> {{ post.date.strftime('%d.%m.%Y') }}</p>
 
-    <div class="post-content">
-        <p>{{ post.text }}</p>
-    </div>
+            {% if post.image_id %}
+                <img src="{{ url_for('static', filename='images/' + post.image_id) }}" alt="{{ post.title }}" class="img-fluid mb-3">
+            {% endif %}
 
-    <h3>Оставьте комментарий</h3>
-    <form method="POST" action="{{ url_for('add_comment', post_id=post.id) }}">
-        <div class="form-group">
-            <textarea class="form-control" name="comment" required></textarea>
+            <div class="post-content">
+                <p>{{ post.text }}</p>
+            </div>
+
+            <h3>Оставьте комментарий</h3>
+            <form method="POST" action="{{ url_for('add_comment', post_id=post.id) }}">
+                <div class="form-group">
+                    <textarea class="form-control" name="comment" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Отправить</button>
+            </form>
+
+            <h3>Комментарии</h3>
+            <ul class="list-unstyled">
+                {% for comment in post.comments %}
+                    <li>
+                        <p><strong>{{ comment.author }}:</strong> {{ comment.text }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
         </div>
-        <button type="submit" class="btn btn-primary">Отправить</button>
-    </form>
-
-    <h3>Комментарии</h3>
-    <ul class="list-unstyled">
-        {% for comment in post.comments %}
-            <li>
-                <p><strong>{{ comment.author }}:</strong> {{ comment.text }}</p>
-            </li>
-        {% endfor %}
-    </ul>
+        <hr>  <!-- Разделитель между постами -->
+    {% endfor %}
 {% endblock %}
