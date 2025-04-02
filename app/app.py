@@ -1,63 +1,83 @@
-import random
-from functools import lru_cache
-from flask import Flask, render_template
-from faker import Faker
-
-fake = Faker()
+from flask import Flask, request, render_template, redirect, url_for, flash, make_response
+import re
 
 app = Flask(__name__)
-application = app
+app.secret_key = 'your_secret_key'  # Необходимо для работы flash-сообщений
 
-images_ids = [
-    '7d4e9175-95ea-4c5f-8be5-92a6b708bb3c',
-    '2d2ab7df-cdbc-48a8-a936-35bba702def5',
-    '6e12f3de-d5fd-4ebb-855b-8cbc485278b7',
-    'afc2cfe7-5cac-4b80-9b9a-d5c65ef0c728',
-    'cab5b7f2-774e-4884-a200-0c0180fa777f'
-]
-
-def generate_comments(replies=True):
-    comments = []
-    for _ in range(random.randint(1, 3)):
-        comment = {'author': fake.name(), 'text': fake.text()}
-        if replies:
-            comment['replies'] = generate_comments(replies=False)
-        comments.append(comment)
-    return comments
-
-def generate_post(i):
-    return {
-        'title': f'Заголовок поста {i + 1}',  # Использование индекс для уникальности
-        'text': fake.paragraph(nb_sentences=10),
-        'author': fake.name(),
-        'date': fake.date_time_between(start_date='-2y', end_date='now'),
-        'image_id': f'{images_ids[i]}.jpg',
-        'comments': generate_comments()
-    }
-
-@lru_cache
-def posts_list():
-    return sorted([generate_post(i) for i in range(5)], key=lambda p: p['date'], reverse=True)
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/posts')
-def posts():
-    return render_template('posts.html', title='Посты', posts=posts_list())
 
-@app.route('/posts/<int:index>')
-def post(index):
-    posts = posts_list()
-    if index < 0 or index >= len(posts):
-        return "404 Not Found", 404
-    p = posts[index]
-    return render_template('post.html', title=p['title'], post=p)
+@app.route('/url-params')
+def url_params():
+    return render_template('url_params.html', params=request.args)
 
-@app.route('/about')
-def about():
-    return render_template('about.html', title='Об авторе')
 
-if __name__ == "__main__":
+@app.route('/headers')
+def headers():
+    return render_template('headers.html', headers=request.headers)
+
+
+@app.route('/cookies', methods=['GET', 'POST'])
+def cookies():
+    if request.method == 'POST':
+        resp = make_response(redirect(url_for('cookies')))
+        resp.set_cookie('my_cookie', 'cookie_value')
+        return resp
+
+    # Проверка на удаление куки
+    if 'delete' in request.args:
+        resp = make_response(redirect(url_for('cookies')))
+        resp.delete_cookie('my_cookie')
+        return resp
+
+    return render_template('cookies.html', cookie_value=request.cookies.get('my_cookie'))
+
+
+@app.route('/form-validation', methods=['GET', 'POST'])
+def form_validation():
+    if request.method == 'POST':
+        phone = request.form.get('phone')
+        error = None
+
+        # Удаляем все символы, кроме представленных
+        cleaned_phone = re.sub(r'[^\d()\+\-.\s]', '', phone)
+
+        # Проверка критериев
+        if cleaned_phone.startswith('+7') or cleaned_phone.startswith('8'):
+            if len(cleaned_phone) != 11:
+                error = 'Недопустимый ввод. Неверное количество цифр.'
+        else:
+            if len(cleaned_phone) != 10:
+                error = 'Недопустимый ввод. Неверное количество цифр.'
+
+        if not error and not re.match(r'^[\d\s().+-]+$', phone):
+            error = 'Недопустимый ввод. В номере телефона встречаются недопустимые символы.'
+
+        if error:
+            flash(error, 'danger')
+            return render_template('form_validation.html', phone=phone, error=error)
+
+        # Форматируем номер
+        formatted_phone = format_phone_number(cleaned_phone)
+        return render_template('form_validation.html', phone=formatted_phone)
+
+    return render_template('form_validation.html')
+
+
+def format_phone_number(phone):
+    """ Форматирует номер телефона в формат 8-***-***-**-** """
+    if phone.startswith('+7'):
+        phone = phone[2:]  # Убираем +7
+    elif phone.startswith('8'):
+        phone = phone[1:]  # Убираем 8
+
+    # Преобразуем в формат 8-***-***-**-**
+    formatted = f"8-{phone[:3]}-{phone[3:6]}-{phone[6:8]}-{phone[8:]}"
+    return formatted
+
+
+if __name__ == '__main__':
     app.run(debug=True)
