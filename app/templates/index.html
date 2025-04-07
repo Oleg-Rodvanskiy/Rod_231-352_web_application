@@ -1,20 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Flask App</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-</head>
-<body>
-
-<div class="container mt-4">
-    <h1>Welcome to Flask App</h1>
-    <a href="/url-params" class="btn btn-primary">Параметры URL</a>
-    <a href="/headers" class="btn btn-primary">Заголовки Запроса</a>
-    <a href="/cookies" class="btn btn-primary">Cookie</a>
-    <a href="/form-validation" class="btn btn-primary">Форма Валидации</a>
-</div>
-
-</body>
-</html>
+{% extends 'base.html' %}
+{% block content %}
+<h1>Добро пожаловать</h1>
+<p>Пожалуйста, войдите в систему для продолжения.</p>
+{% endblock %}
