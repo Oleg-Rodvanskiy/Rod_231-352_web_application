@@ -7,7 +7,20 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
-
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="{{ url_for('index') }}">Главная</a>
+    <div class="collapse navbar-collapse">
+        <ul class="navbar-nav mr-auto">
+            {% if current_user.is_authenticated %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('counter') }}">Счетчик</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('secret') }}">Секретная страница</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Выйти</a></li>
+            {% else %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Войти</a></li>
+            {% endif %}
+        </ul>
+    </div>
+</nav>
 <div class="container mt-4">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -21,6 +34,5 @@
 
     {% block content %}{% endblock %}
 </div>
-
 </body>
 </html>

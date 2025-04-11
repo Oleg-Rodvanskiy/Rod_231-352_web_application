@@ -1,74 +1,51 @@
 import pytest
-from app import app
+from app import app, login_manager
+
 @pytest.fixture
 def client():
     app.config['TESTING'] = True
     with app.test_client() as client:
         yield client
 
-
 def test_index(client):
     response = client.get('/')
-    assert 'Welcome to Flask App' in response.get_data(as_text=True)
+    assert 'Добро пожаловать' in response.get_data(as_text=True)  # Используем as_text=True
 
+def test_login(client):
+    response = client.post('/login', data={'username': 'user', 'password': 'qwerty'})
+    assert response.status_code == 302  # Проверка на перенаправление
 
-def test_url_params(client):
-    response = client.get('/url-params?name=John&age=30')
-    assert 'name: John' in response.get_data(as_text=True)
-    assert 'age: 30' in response.get_data(as_text=True)
+def test_login_invalid(client):
+    response = client.post('/login', data={'username': 'user', 'password': 'wrong_password'})
+    assert 'Неверный логин или пароль. Пожалуйста, попробуйте снова.' in response.get_data(as_text=True)
 
+def test_authenticated_user_can_access_counter(client):
+    client.post('/login', data={'username': 'user', 'password': 'qwerty'})
+    response = client.get('/counter')
+    assert 'Счётчик посещений' in response.get_data(as_text=True)
 
-def test_headers(client):
-    response = client.get('/headers')
-    assert 'Host' in response.headers  # Проверка наличия заголовка Host
-    assert 'User-Agent' in response.headers  # Проверка наличия заголовка User-Agent
+def test_visit_counter_increases(client):
+    client.post('/login', data={'username': 'user', 'password': 'qwerty'})
+    response = client.get('/counter')
+    assert 'Вы посетили эту страницу' in response.get_data(as_text=True)
 
+def test_redirect_to_login_for_secret(client):
+    response = client.get('/secret', follow_redirects=True)
+    assert 'Вход' in response.get_data(as_text=True)
 
-def test_cookies(client):
-    response = client.get('/cookies')
-    assert 'Куки не установлены.' in response.get_data(as_text=True)
+def test_authenticated_user_can_access_secret(client):
+    client.post('/login', data={'username': 'user', 'password': 'qwerty'})
+    response = client.get('/secret')
+    assert 'Секретная страница' in response.get_data(as_text=True)
 
-    response = client.post('/cookies')
-    assert 'Текущее значение куки: cookie_value' in response.get_data(as_text=True)
+def test_logout(client):
+    client.post('/login', data={'username': 'user', 'password': 'qwerty'})
+    response = client.get('/logout')
+    assert 'Вы вышли из системы.' in response.get_data(as_text=True)
 
-    response = client.get('/cookies?delete=true')
-    assert 'Куки не установлены.' in response.get_data(as_text=True)
-
-
-def test_form_validation_invalid_length(client):
-    response = client.post('/form-validation', data={'phone': '123'})
-    assert 'Недопустимый ввод. Неверное количество цифр.' in response.get_data(as_text=True)
-
-
-def test_form_validation_invalid_characters(client):
-    response = client.post('/form-validation', data={'phone': '123abc456'})
-    assert 'Недопустимый ввод. В номере телефона встречаются недопустимые символы.' in response.get_data(as_text=True)
-
-
-def test_form_validation_valid_phone(client):
-    response = client.post('/form-validation', data={'phone': '+7 (123) 456-75-90'})
-    assert '8-123-456-75-90' in response.get_data(as_text=True)
-
-
-def test_format_phone_number(client):
-    response = client.post('/form-validation', data={'phone': '8(123)4567590'})
-    assert '8-123-456-75-90' in response.get_data(as_text=True)
-
-
-def test_phone_form_with_white_spaces(client):
-    response = client.post('/form-validation', data={'phone': ' 8 ( 123 ) 456 - 75 - 90 '})
-    assert '8-123-456-75-90' in response.get_data(as_text=True)
-
-
-def test_invalid_country_code(client):
-    response = client.post('/form-validation', data={'phone': '+1 (123) 456-75-90'})
-    assert 'Недопустимый ввод. Неверное количество цифр.' in response.get_data(as_text=True)
-
-
-def test_empty_phone_number(client):
-    response = client.post('/form-validation', data={'phone': ''})
-    assert 'Недопустимый ввод. Неверное количество цифр.' in response.get_data(as_text=True)
-
+def test_remember_me_functionality(client):
+    response = client.post('/login', data={'username': 'user', 'password': 'qwerty', 'remember_me': 'y'})
+    assert '_remember' in client.cookiejar
 
 if __name__ == "__main__":
     pytest.main()
