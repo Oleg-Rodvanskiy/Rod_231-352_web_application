@@ -1,74 +1,89 @@
-import pytest
-from app import app
-@pytest.fixture
-def client():
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
+import unittest
+from app import app, db, User, Role
+from flask import url_for
 
 
-def test_index(client):
-    response = client.get('/')
-    assert 'Welcome to Flask App' in response.get_data(as_text=True)
+class UserManagementTestCase(unittest.TestCase):
+    def setUp(self):
+        # Настройка тестового приложения и базы данных
+        self.app = app
+        self.app.config['TESTING'] = True
+        self.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test_users.db'
+        self.client = self.app.test_client()
+        with self.app.app_context():
+            db.create_all()
+            # Создаем роль для пользователей
+            self.role = Role(name='Admin', description='Administrator role')
+            db.session.add(self.role)
+            db.session.commit()
+            # Создаем тестового пользователя
+            self.user = User(username='testuser', first_name='Иван', last_name='Иванов', middle_name='Иванович')
+            self.user.set_password('StrongPassword123!')
+            db.session.add(self.user)
+            db.session.commit()
+
+    def tearDown(self):
+        with self.app.app_context():
+            db.drop_all()
+
+    def test_create_user(self):
+        """Тестирование создания пользователя"""
+        # Вход в приложение
+        self.client.post('/login', data={'username': 'testuser', 'password': 'StrongPassword123!'})
+
+        response = self.client.post('/user/create', data={
+            'username': 'newuser',
+            'last_name': 'Петров',
+            'first_name': 'Петр',
+            'middle_name': 'Петрович',
+            'role_id': self.role.id,
+            'password': 'NewPassword123!'
+        })
+        self.assertEqual(response.status_code, 302)  # Проверка перенаправления
+        new_user = User.query.filter_by(username='newuser').first()
+        self.assertIsNotNone(new_user, "Пользователь не был создан.")
+
+    def test_edit_user(self):
+        """Тестирование редактирования пользователя"""
+        # Вход в приложение
+        self.client.post('/login', data={'username': 'testuser', 'password': 'StrongPassword123!'})
+
+        response = self.client.post(f'/user/edit/{self.user.id}', data={
+            'last_name': 'Петров',
+            'first_name': 'Петр',
+            'middle_name': 'Петрович',
+            'role_id': self.role.id
+        })
+        self.assertEqual(response.status_code, 302)  # Проверка перенаправления
+        updated_user = User.query.get(self.user.id)
+        self.assertEqual(updated_user.last_name, 'Петров', "Фамилия пользователя не была обновлена.")
+
+    def test_delete_user(self):
+        """Тестирование удаления пользователя"""
+        # Вход в приложение
+        self.client.post('/login', data={'username': 'testuser', 'password': 'StrongPassword123!'})
+
+        response = self.client.post(f'/user/delete/{self.user.id}')
+        self.assertEqual(response.status_code, 302)  # Проверка перенаправления
+        deleted_user = User.query.get(self.user.id)
+        self.assertIsNone(deleted_user, "Пользователь не был удалён.")
+
+    def test_change_password(self):
+        """Тестирование смены пароля"""
+        # Вход в приложение
+        self.client.post('/login', data={'username': 'testuser', 'password': 'StrongPassword123!'})
+
+        response = self.client.post('/password_change', data={
+            'old_password': 'StrongPassword123!',
+            'new_password': 'NewStrongPassword123!',
+            'confirm_password': 'NewStrongPassword123!'
+        })
+        self.assertEqual(response.status_code, 302)  # Проверка перенаправления
+
+        # Проверка нового пароля
+        user = User.query.get(self.user.id)
+        self.assertTrue(user.check_password('NewStrongPassword123!'), "Пароль не был изменен правильно.")
 
 
-def test_url_params(client):
-    response = client.get('/url-params?name=John&age=30')
-    assert 'name: John' in response.get_data(as_text=True)
-    assert 'age: 30' in response.get_data(as_text=True)
-
-
-def test_headers(client):
-    response = client.get('/headers')
-    assert 'Host' in response.headers  # Проверка наличия заголовка Host
-    assert 'User-Agent' in response.headers  # Проверка наличия заголовка User-Agent
-
-
-def test_cookies(client):
-    response = client.get('/cookies')
-    assert 'Куки не установлены.' in response.get_data(as_text=True)
-
-    response = client.post('/cookies')
-    assert 'Текущее значение куки: cookie_value' in response.get_data(as_text=True)
-
-    response = client.get('/cookies?delete=true')
-    assert 'Куки не установлены.' in response.get_data(as_text=True)
-
-
-def test_form_validation_invalid_length(client):
-    response = client.post('/form-validation', data={'phone': '123'})
-    assert 'Недопустимый ввод. Неверное количество цифр.' in response.get_data(as_text=True)
-
-
-def test_form_validation_invalid_characters(client):
-    response = client.post('/form-validation', data={'phone': '123abc456'})
-    assert 'Недопустимый ввод. В номере телефона встречаются недопустимые символы.' in response.get_data(as_text=True)
-
-
-def test_form_validation_valid_phone(client):
-    response = client.post('/form-validation', data={'phone': '+7 (123) 456-75-90'})
-    assert '8-123-456-75-90' in response.get_data(as_text=True)
-
-
-def test_format_phone_number(client):
-    response = client.post('/form-validation', data={'phone': '8(123)4567590'})
-    assert '8-123-456-75-90' in response.get_data(as_text=True)
-
-
-def test_phone_form_with_white_spaces(client):
-    response = client.post('/form-validation', data={'phone': ' 8 ( 123 ) 456 - 75 - 90 '})
-    assert '8-123-456-75-90' in response.get_data(as_text=True)
-
-
-def test_invalid_country_code(client):
-    response = client.post('/form-validation', data={'phone': '+1 (123) 456-75-90'})
-    assert 'Недопустимый ввод. Неверное количество цифр.' in response.get_data(as_text=True)
-
-
-def test_empty_phone_number(client):
-    response = client.post('/form-validation', data={'phone': ''})
-    assert 'Недопустимый ввод. Неверное количество цифр.' in response.get_data(as_text=True)
-
-
-if __name__ == "__main__":
-    pytest.main()
+if __name__ == '__main__':
+    unittest.main()

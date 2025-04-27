@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>{% if user %}Редактирование{% else %}Создание{% endif %} пользователя</h1>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.username.label }} {{ form.username(class='form-control') }}
+        </div>
+        <div>
+            {{ form.last_name.label }} {{ form.last_name(class='form-control') }}
+        </div>
+        <div>
+            {{ form.first_name.label }} {{ form.first_name(class='form-control') }}
+        </div>
+        <div>
+            {{ form.middle_name.label }} {{ form.middle_name(class='form-control') }}
+        </div>
+        <div>
+            {{ form.role_id.label }} {{ form.role_id(class='form-control') }}
+        </div>
+        {% if not user %}
+        <div>
+            {{ form.password.label }} {{ form.password(class='form-control') }}
+        </div>
+        {% endif %}
+        <div>
+            <button type="submit">Сохранить</button>
+        </div>
+    </form>
+    <a href="{{ url_for('home') }}">Назад</a>
+{% endblock %}
