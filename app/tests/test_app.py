@@ -1,74 +1,107 @@
 import pytest
-from app import app
+from app import app, db, User, Role, VisitLog
+# Фикстура для создания тестового клиента и базы данных
 @pytest.fixture
 def client():
     app.config['TESTING'] = True
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     with app.test_client() as client:
-        yield client
+        with app.app_context():
+            db.create_all()  # Создание всех таблиц
+            # Создание роли Администратор для тестирования
+            admin_role = Role(name='Администратор', description='Супер администратор')
+            db.session.add(admin_role)
+            db.session.commit()
+            yield client
+            db.drop_all()  # Очистка после тестов
 
+# Тестирование создания пользователя
+def test_create_user(client):
+    role = Role(name='Пользователь')
+    db.session.add(role)
+    db.session.commit()
 
-def test_index(client):
-    response = client.get('/')
-    assert 'Welcome to Flask App' in response.get_data(as_text=True)
+    response = client.post('/create_user', data={
+        'login': 'testuser',
+        'password': 'Password123!',
+        'last_name': 'Иванов',
+        'first_name': 'Иван',
+        'patronymic': 'Иванович',
+        'role_id': 1  # Поскольку первая роль - администратор
+    })
 
+    assert response.status_code == 302  # Ожидаем перенаправление после успеха
+    assert b'Пользователь успешно создан!' in response.data
 
-def test_url_params(client):
-    response = client.get('/url-params?name=John&age=30')
-    assert 'name: John' in response.get_data(as_text=True)
-    assert 'age: 30' in response.get_data(as_text=True)
+# Тестирование входа на сайт
+def test_login(client):
+    user = User(login='testuser', role_id=1)
+    user.set_password('Password123!')
+    db.session.add(user)
+    db.session.commit()
 
+    response = client.post('/login', data={
+        'login': 'testuser',
+        'password': 'Password123!'
+    })
 
-def test_headers(client):
-    response = client.get('/headers')
-    assert 'Host' in response.headers  # Проверка наличия заголовка Host
-    assert 'User-Agent' in response.headers  # Проверка наличия заголовка User-Agent
+    assert response.status_code == 302  # Успешный вход должен перенаправить
+    assert b'Вы успешно вошли в систему.' in response.data  # Проверяем, что сообщение об успехе присутствует
 
+# Тестирование доступа к главной странице
+def test_index_access(client):
+    user = User(login='admin', role_id=1)
+    user.set_password('Password123!')
+    db.session.add(user)
+    db.session.commit()
 
-def test_cookies(client):
-    response = client.get('/cookies')
-    assert 'Куки не установлены.' in response.get_data(as_text=True)
+    with client:
+        client.post('/login', data={
+            'login': 'admin',
+            'password': 'Password123!'
+        })
 
-    response = client.post('/cookies')
-    assert 'Текущее значение куки: cookie_value' in response.get_data(as_text=True)
+        response = client.get('/')
+        assert b'Список пользователей' in response.data  # Проверяем, что контент страницы загружен
 
-    response = client.get('/cookies?delete=true')
-    assert 'Куки не установлены.' in response.get_data(as_text=True)
+# Тестирование доступа для пользователей без прав
+def test_restrict_access(client):
+    user = User(login='regular_user', role_id=2)   # Роль не администратор
+    user.set_password('Password123!')
+    db.session.add(user)
+    db.session.commit()
 
+    with client:
+        client.post('/login', data={
+            'login': 'regular_user',
+            'password': 'Password123!'
+        })
 
-def test_form_validation_invalid_length(client):
-    response = client.post('/form-validation', data={'phone': '123'})
-    assert 'Недопустимый ввод. Неверное количество цифр.' in response.get_data(as_text=True)
+        response = client.get('/create_user')  # Смотрим страницу создания пользователя
+        assert response.status_code == 302  # Ожидаем перенаправление
+        assert b'У вас недостаточно прав для доступа к данной странице.' in response.data
 
+# Тестирование логирования посещений страниц
+def test_visit_logging(client):
+    user = User(login='testuser', role_id=1)
+    user.set_password('Password123!')
+    db.session.add(user)
+    db.session.commit()
 
-def test_form_validation_invalid_characters(client):
-    response = client.post('/form-validation', data={'phone': '123abc456'})
-    assert 'Недопустимый ввод. В номере телефона встречаются недопустимые символы.' in response.get_data(as_text=True)
+    with client:
+        client.post('/login', data={'login': 'testuser', 'password': 'Password123!'})
+        client.get('/visit_log')  # Посещаем страницу
 
+    assert VisitLog.query.count() == 1  # Убедимся, что запись о посещении создана
 
-def test_form_validation_valid_phone(client):
-    response = client.post('/form-validation', data={'phone': '+7 (123) 456-75-90'})
-    assert '8-123-456-75-90' in response.get_data(as_text=True)
+# Тестирование выхода из системы
+def test_logout(client):
+    user = User(login='logout_user', role_id=1)
+    user.set_password('Password123!')
+    db.session.add(user)
+    db.session.commit()
 
-
-def test_format_phone_number(client):
-    response = client.post('/form-validation', data={'phone': '8(123)4567590'})
-    assert '8-123-456-75-90' in response.get_data(as_text=True)
-
-
-def test_phone_form_with_white_spaces(client):
-    response = client.post('/form-validation', data={'phone': ' 8 ( 123 ) 456 - 75 - 90 '})
-    assert '8-123-456-75-90' in response.get_data(as_text=True)
-
-
-def test_invalid_country_code(client):
-    response = client.post('/form-validation', data={'phone': '+1 (123) 456-75-90'})
-    assert 'Недопустимый ввод. Неверное количество цифр.' in response.get_data(as_text=True)
-
-
-def test_empty_phone_number(client):
-    response = client.post('/form-validation', data={'phone': ''})
-    assert 'Недопустимый ввод. Неверное количество цифр.' in response.get_data(as_text=True)
-
-
-if __name__ == "__main__":
-    pytest.main()
+    with client:
+        client.post('/login', data={'login': 'logout_user', 'password': 'Password123!'})
+        client.get('/logout')  # Выход из системы
+        assert b'Вы вышли из системы.' in client.get('/login').data  # Проверьте сообщение о выходе
