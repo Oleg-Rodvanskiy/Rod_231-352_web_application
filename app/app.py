@@ -1,9 +1,8 @@
 from flask import Flask, render_template, redirect, url_for, flash, request
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from models import db, User, Role, VisitLog
-from forms import UserForm, ChangePasswordForm
-from decorators import check_rights
+from app.modules.models import db, User, Role, VisitLog
+from app.modules.forms import UserForm, ChangePasswordForm
+# from decorators import check_rights
 import csv
 from io import StringIO
 
@@ -14,6 +13,9 @@ db.init_app(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+def get_app():
+    return app
 
 
 @login_manager.user_loader
