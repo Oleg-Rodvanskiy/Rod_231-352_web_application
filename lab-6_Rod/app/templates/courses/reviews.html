@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отзывы для {{ course.name }}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Отзывы для {{ course.name }}</h2>
+
+        <form method="get" class="mb-3">
+            <label for="sort">Сортировать по:</label>
+            <select name="sort" id="sort" class="form-control">
+                <option value="newest" {% if sort_order =='newest' %}selected{% endif %}>По новизне</option>
+                <option value="positive" {% if sort_order =='positive' %}selected{% endif %}>Сначала положительные</option>
+                <option value="negative" {% if sort_order =='negative' %}selected{% endif %}>Сначала отрицательные</option>
+            </select>
+            <button type="submit" class="btn btn-primary mt-2">Применить</button>
+        </form>
+
+        <div class="reviews">
+            {% if reviews.items %}
+                {% for review in reviews.items %}
+                    <div class="review mb-3 border p-3 rounded">
+                        <h5 class="mb-1">{{ review.user.first_name }} {{ review.user.last_name }}</h5>
+                        <p><strong>Дата: </strong>{{ review.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        <p><strong>Оценка: </strong>{{ review.rating }}</p>
+                        <p>{{ review.text }}</p>
+                        <hr>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>К сожалению, отзывов пока нет.</p>
+            {% endif %}
+        </div>
+
+        {{ render_pagination(reviews, 'courses.reviews', {'course_id': course.id, 'sort': sort_order}) }}
+
+        <!-- Форма для создания отзыва -->
+        <h3 class="mt-5">Добавить отзыв</h3>
+        {% if existing_review %}
+            <div class="review mb-3 border p-3 rounded">
+                <h5 class="mb-1">{{ existing_review.user.first_name }} {{ existing_review.user.last_name }}</h5>
+                <p><strong>Дата: </strong>{{ existing_review.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                <p><strong>Оценка: </strong>{{ existing_review.rating }}</p>
+                <p>{{ existing_review.text }}</p>
+                <hr>
+            </div>
+        {% else %}
+            <form method="POST" action="{{ url_for('courses.add_review', course_id=course.id) }}">
+                <div class="mb-3">
+                    <label for="rating">Оценка</label>
+                    <select name="rating" id="rating" class="form-control" required>
+                        <option value="5">Отлично</option>
+                        <option value="4">Хорошо</option>
+                        <option value="3">Удовлетворительно</option>
+                        <option value="2">Неудовлетворительно</option>
+                        <option value="1">Плохо</option>
+                        <option value="0">Ужасно</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="text">Текст отзыва</label>
+                    <textarea name="text" id="text" class="form-control" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Отправить отзыв</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
