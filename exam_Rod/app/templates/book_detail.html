@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>{{ book.title }}</h1>
+<p><strong>Автор:</strong> {{ book.author }}</p>
+<p><strong>Год:</strong> {{ book.year }}</p>
+<p><strong>Описание:</strong> {{ book.description }}</p>
+{% if book.genres %}
+    <p><strong>Жанры:</strong> {{ ', '.join([genre.name for genre in book.genres]) }}</p>
+{% endif %}
+{% endblock %}
