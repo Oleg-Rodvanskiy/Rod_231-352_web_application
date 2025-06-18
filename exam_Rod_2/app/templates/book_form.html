@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% macro render_book_form(form) %}
+    <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        <div>
+            {{ form.title.label }}<br>
+            {{ form.title(size=32) }}<br>
+            {% for error in form.title.errors %}
+                <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div>
+            {{ form.author.label }}<br>
+            {{ form.author(size=32) }}<br>
+            {% for error in form.author.errors %}
+                <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div>
+            {{ form.year.label }}<br>
+            {{ form.year(size=32) }}<br>
+            {% for error in form.year.errors %}
+                <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div>
+            {{ form.publisher.label }}<br>
+            {{ form.publisher(size=32) }}<br>
+            {% for error in form.publisher.errors %}
+                <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div>
+            {{ form.page_count.label }}<br>
+            {{ form.page_count(size=32) }}<br>
+            {% for error in form.page_count.errors %}
+                <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div>
+            {{ form.description.label }}<br>
+            {{ form.description(rows=4, cols=32) }}<br>  # Добавляем текстовое поле для описания 
+            {% for error in form.description.errors %}
+                <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div>
+            {% if not form.is_edit %}  {# Только для создания книги #}
+                {{ form.cover.label }}<br>
+                {{ form.cover() }}<br>
+                {% for error in form.cover.errors %}
+                    <span style="color: red;">[{{ error }}]</span>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <div>
+            <label>Жанры:</label><br>
+            {% for genre in form.genres %}
+                <label>{{ genre.label }} {{ genre() }}</label><br>
+            {% endfor %}
+        </div>
+
+        <div>
+            <input type="submit" value="Сохранить">
+        </div>
+    </form>
+{% endmacro %}
+
+{% block content %}
+<h1>{% if form.is_edit %}Редактировать книгу{% else %}Добавить книгу{% endif %}</h1>
+{{ render_book_form(form) }}
+{% endblock %}
